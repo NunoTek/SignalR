@@ -1,0 +1,7 @@
+
+https://docs.microsoft.com/fr-fr/aspnet/signalr/overview/guide-to-the-api/hubs-api-guide-server
+https://docs.microsoft.com/en-us/aspnet/signalr/overview/performance/scaleout-in-signalr
+https://docs.microsoft.com/en-us/aspnet/signalr/overview/getting-started/tutorial-server-broadcast-with-signalr
+https://stackoverflow.com/questions/20908620/how-to-obtain-connection-id-of-signalr-client-on-the-server-side
+https://stackoverflow.com/questions/11140164/signalr-console-app-example
+https://docs.microsoft.com/fr-fr/dotnet/csharp/language-reference/keywords/volatile
