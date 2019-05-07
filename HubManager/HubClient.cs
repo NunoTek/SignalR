@@ -1,52 +1,36 @@
 ﻿using Microsoft.AspNetCore.SignalR.Client;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace HubManager
 {
-    public class HubConnection
+    public class HubClient
     {
         #region " Properties "
 
         public string Token { get; set; }
         public bool PersistedConnection { get; set; } = true;
-        public int RetryDelay { get; set; } = 5000;
+        public int RetryDelay { get; set; } = 10000;
 
         public HubConnectionState State { get { return hub.State; } }
 
         #endregion " Properties "
 
-        public Microsoft.AspNetCore.SignalR.Client.HubConnection hub;
+        private HubConnection hub;
         private string connectionUrl = "";
 
-        public HubConnection(string url)
+        public HubClient(string url)
         {
             connectionUrl = url;
         }
-
-        #region " Helper "
-
-        public class Packet
-        {
-            public Packet(Tuple<int, int, int> header = null, object content = null)
-            {
-                DateTime = DateTime.Now;
-                Header = header;
-                Content = content;
-            }
-
-            public DateTime DateTime { get; }
-            public Tuple<int, int, int> Header { get; set; }
-            public object Content { get; set; }
-            //public int Length { get; set; }
-        }
-
-        #endregion " Helper "
 
         public async Task ConnectAsync(string url = "")
         {
             if (!string.IsNullOrEmpty(url))
                 connectionUrl = url;
+
+            OnConnecting();
 
             try
             {
@@ -57,8 +41,6 @@ namespace HubManager
                 Handlers();
 
                 await hub.StartAsync();
-
-                OnConnected();
             }
             catch (Exception exception)
             {
@@ -66,10 +48,12 @@ namespace HubManager
 
                 if (PersistedConnection)
                 {
-                    System.Threading.Thread.Sleep(RetryDelay);
+                    Thread.Sleep(RetryDelay);
                     await ConnectAsync();
                 }
             }
+
+            OnConnected();
         }
 
         public async Task DisconnectAsync(Exception exception)
@@ -79,7 +63,7 @@ namespace HubManager
 
             if (PersistedConnection)
             {
-                System.Threading.Thread.Sleep(RetryDelay);
+                Thread.Sleep(RetryDelay);
                 await ConnectAsync();
             }
         }
@@ -150,6 +134,26 @@ namespace HubManager
         protected virtual void OnLog(string message)
         {
             OnLogRaised?.Invoke(this, message);
+        }
+
+        public delegate void OnConnectingHandler(object sender, string url);
+
+        public event OnConnectingHandler OnConnectingRaised;
+
+        protected virtual void OnConnecting()
+        {
+            if (OnConnectingRaised != null)
+            {
+                OnConnectingRaised(this, connectionUrl);
+                if (PersistedConnection)
+                {
+                    OnLog($"[{RetryDelay}ms] Reconnecting to: {connectionUrl}");
+                }
+                else
+                {
+                    OnLog($"[{RetryDelay}ms] Connecting to: {connectionUrl}");
+                }
+            }
         }
 
         public delegate void OnConnectedHandler(object sender);

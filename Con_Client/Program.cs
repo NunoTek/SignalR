@@ -1,11 +1,13 @@
-﻿using Microsoft.IdentityModel.Tokens;
+﻿using HubManager;
+using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Threading;
 
-namespace ConCore_Client
+namespace Con_Client
 {
     internal class Program
     {
@@ -13,34 +15,23 @@ namespace ConCore_Client
         {
             var url = "http://localhost:5000/reportsPublisher";
 
-            Console.WriteLine("Connecting to {0}", url);
-
             var token = GetToken(GetClaimsIdentity());
-            var connection = new HubManager.HubConnection(url) { Token = token };
+            var connection = new HubClient(url) { Token = token };
 
-            connection.OnLogRaised += (obj, log) =>
-            {
-                Console.WriteLine(log);
-            };
-
-            connection.OnReceivedRaised += (obj, clientId, packet) =>
-            {
-                Console.WriteLine($"[{packet.DateTime}][{clientId}]: {packet.Content.ToString()}");
-            };
+            HandleEvents(connection);
 
             connection.ConnectAsync().Wait();
 
-            System.Threading.Thread.Sleep(500);
+            Thread.Sleep(500);
 
             if (connection.State == Microsoft.AspNetCore.SignalR.Client.HubConnectionState.Connected)
             {
-                Console.WriteLine("Connected to {0}", url);
-                Console.WriteLine("Awaiting your command.");
+                Console.WriteLine("[@ CMD] Awaiting your command.");
 
                 var menu = Console.ReadLine();
                 while (menu != "exit")
                 {
-                    var packet = new HubManager.HubConnection.Packet(new Tuple<int, int, int>(0, 0, 0), menu);
+                    var packet = new Packet(new Tuple<int, int, int>(0, 0, 0), menu);
                     connection.SendToAllAsync(packet).Wait();
 
                     menu = Console.ReadLine();
@@ -48,11 +39,48 @@ namespace ConCore_Client
             }
             else
             {
-                Console.WriteLine("Couldn't connect to {0}.", url);
+
             }
 
             Console.WriteLine("Exiting");
-            System.Threading.Thread.Sleep(500);
+            Thread.Sleep(500);
+        }
+
+        private static void HandleEvents(HubClient connection)
+        {
+
+            connection.OnLogRaised += (obj, log) =>
+            {
+                Console.WriteLine($"[i Log]: {log}");
+            };
+
+            connection.OnErrorRaised += (obj, ex) =>
+            {
+                Console.WriteLine($"[! Error] : {ex.Message}");
+            };
+
+            connection.OnConnectingRaised += (obj, url) =>
+            {
+                Console.WriteLine($"[* Connecting] to: {url}");
+            };
+            connection.OnConnectedRaised += (obj) =>
+            {
+                Console.WriteLine("[+ Connected]");
+            };
+            connection.OnDisconnectedRaised += (obj) =>
+            {
+                Console.WriteLine("[- Disconnected]");
+            };
+
+            connection.OnReceivedRaised += (obj, clientId, packet) =>
+            {
+                Console.WriteLine($"[-- Received]: [{packet.DateTime}][{clientId}]: {packet.Content.ToString()}");
+            };
+
+            connection.OnSentRaised += (obj, clientId, packet) =>
+            {
+                Console.WriteLine($"[++ Send]: [{packet.DateTime}][{clientId}]: {packet.Content.ToString()}");
+            };
         }
 
         private static ClaimsIdentity GetClaimsIdentity()

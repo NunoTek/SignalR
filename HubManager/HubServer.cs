@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using System;
-using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
@@ -9,8 +8,6 @@ using System.Threading.Tasks;
 
 namespace HubManager
 {
-    //[Authorize(Roles = "admin")]
-    //[HasPermission("allrights")]
     public class HubServer : Hub
     {
         #region " WarningProperties "
@@ -28,105 +25,11 @@ namespace HubManager
             clientsManager = new ClientsManager(accessor);
         }
 
-        #region " Clients Manager "
-
-        public class ClientsManager
-        {
-            private volatile List<UserDto> _users;
-            private IHttpContextAccessor _accessor;
-
-            public ClientsManager(IHttpContextAccessor accessor)
-            {
-                _users = new List<UserDto>();
-                _accessor = accessor;
-            }
-
-            public List<UserDto> Users()
-            {
-                return _users;
-            }
-
-            public async Task LoginAsync(UserDto user)
-            {
-                user.IpAddress = _accessor.HttpContext.Connection.RemoteIpAddress.ToString();
-                _users.Add(user);
-            }
-
-            public async Task LogoutAsync(UserDto user)
-            {
-                _users.Remove(user);
-                user.Dispose();
-            }
-        }
-
-        public class UserDto : IDisposable
-        {
-            public UserDto(HubCallerContext context = null)
-            {
-                Context = context;
-                Id = Guid.NewGuid().ToString();
-                Language = "en-EN";
-                ConnectionDate = DateTime.Now;
-                Roles = new List<string>();
-                Permissions = new List<string>();
-            }
-
-            [System.Runtime.Serialization.IgnoreDataMemberAttribute]
-            public HubCallerContext Context { get; }
-
-            public string Token { get; set; }
-            public string Id { get; set; }
-            public string Name { get; set; }
-            public string IpAddress { get; set; }
-            public string Language { get; set; }
-            public DateTime ConnectionDate { get; }
-
-            public List<string> Roles { get; set; }
-            public List<string> Permissions { get; set; }
-
-            public void Dispose()
-            {
-                Roles.Clear();
-                Permissions.Clear();
-            }
-        }
-
-        #endregion " Clients Manager "
-
-        #region " Helper "
-
-        public class Packet
-        {
-            public Packet(Tuple<int, int, int> header = null, object content = null)
-            {
-                DateTime = DateTime.Now;
-                Header = header;
-                Content = content;
-            }
-
-            public DateTime DateTime { get; }
-            public Tuple<int, int, int> Header { get; set; }
-            public object Content { get; set; }
-            //public int Length { get; set; }
-        }
-
-        #endregion " Helper "
-
-        #region " Exceptions "
-
-        public class IntraConnectionExceptions
-        {
-            public const string UnauthorizedUser = "User unauthorized.";
-            public const string VoidToken = "Token is void.";
-            public const string ErrorEncountered = "An error occured, please contact an administrator";
-        }
-
-        #endregion " Exceptions "
-
         #region " Connection "
 
         public override async Task OnConnectedAsync()
         {
+            await Groups.AddToGroupAsync(Context.ConnectionId, "SignalR Users");
             await base.OnConnectedAsync();
 
             var guestId = Context.ConnectionId;
@@ -173,7 +76,7 @@ namespace HubManager
             }
         }
 
-        public async Task DisconnectClient(string clientId, string error = IntraConnectionExceptions.UnauthorizedUser)
+        public async Task DisconnectClient(string clientId, string error = HubExceptions.UnauthorizedUser)
         {
             if (string.IsNullOrEmpty(clientId))
                 return;
