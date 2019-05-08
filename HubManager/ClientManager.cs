@@ -43,6 +43,8 @@ namespace HubManager
             Id = Guid.NewGuid().ToString();
             Language = "en-EN";
             ConnectionDate = DateTime.Now;
+
+            Groups = new List<string>();
             Roles = new List<string>();
             Permissions = new List<string>();
         }
@@ -57,11 +59,13 @@ namespace HubManager
         public string Language { get; set; }
         public DateTime ConnectionDate { get; }
 
+        public List<string> Groups { get; set; }
         public List<string> Roles { get; set; }
         public List<string> Permissions { get; set; }
 
         public void Dispose()
         {
+            Groups.Clear();
             Roles.Clear();
             Permissions.Clear();
         }

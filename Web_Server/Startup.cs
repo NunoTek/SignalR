@@ -20,19 +20,20 @@ namespace Web_Server
         {
             services.AddCors(options =>
             {
-                options.AddPolicy("allowAny",
-                    policy => policy.AllowAnyOrigin()
+                options.AddPolicy("CorsPolicy",
+                    policy => policy//.AllowAnyOrigin()
+                                    .WithOrigins("http://localhost:8080").AllowCredentials() // for signalR to connect
                                     .AllowAnyHeader()
-                                    .AllowAnyMethod());
+                                    .AllowAnyMethod()
+                                    );
             });
 
             services
                 .AddSingleton<IHttpContextAccessor, HttpContextAccessor>()
-                .AddSingleton<HubManager.HubServer>()
-                .AddMvc()
-                .AddNewtonsoftJson();
+                .AddSingleton<HubManager.HubServer>();
 
             services.AddSignalR();
+            services.AddMvc();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -50,19 +51,20 @@ namespace Web_Server
             }
 
             app.UseStaticFiles();
-
-            app.UseSignalR(route =>
-            {
-                route.MapHub<HubManager.HubServer>("/reportsPublisher");
-            });
             app.UseCors("CorsPolicy");
 
-            app.UseRouting(routes =>
+            app.UseSignalR(routes =>
             {
-                routes.MapApplication();
+                routes.MapHub<HubManager.HubServer>("/reportsPublisher");
             });
 
             app.UseAuthorization();
+
+            app.UseMvc();
+            //app.UseRouting(routes =>
+            //{
+            //    routes.MapApplication();
+            //});
         }
     }
 }

@@ -19,7 +19,8 @@
 
 <script>
 import urls from '../configs/baseUrls.js'
-import * as signalR from '@aspnet/signalr'
+import { HubConnectionBuilder, LogLevel } from '@aspnet/signalr'
+// import * as signalR from '@aspnet/signalr'
 
 export default {
   name: 'SignalX',
@@ -31,66 +32,67 @@ export default {
     }
   },
   methods: {
-  connectSignalR () {
+    async connectSignalR () {
       let hubUrl = urls.signalR
-      console.log('signalr:', hubUrl)
-      this.connection = new signalR.HubConnectionBuilder()
+      console.log('signalr server url:', hubUrl)
+      this.connection = new HubConnectionBuilder()
         .withUrl(hubUrl)
-        .configureLogging(signalR.LogLevel.Information)
+        .configureLogging(LogLevel.Information)
         .build()
 
+      console.log('connection:', this.connection)
       this.connection.on('Close', this.onClosed)
       this.connection.on('Receive', this.onReceive)
-      this.connection.on('Login', this.onLogin)      
-      this.connection.on('OnClientRequest', this.OnClientRequest)
+      this.connection.on('Login', this.onLogin)
+      this.connection.on('OnClientRequest', this.onClientRequest)
+      this.connection.on('OnServerRequest', this.onServerRequest)
 
-      this.connection.start()
-
-      console.log('connection:', this.connection)
+      await this.connection.start().then(response => {
+        console.log('connected:', response, this.connection)
+      }).catch(ex => {
+        console.error('error while connecting: ', ex)
+      })
     },
     onClosed (ex) {
       console.log('closed', ex)
       this.reports.push('Connection closed.')
+
+      this.connectSignalR()
     },
     onReceive (e, arg) {
-      conosle.log('received', e, arg)
+      console.log('received', e, arg)
     },
     onLogin () {
-      let token = '' // TODO: ASK API FOR TOKEN
+      // TODO: ASK API FOR TOKEN
+      let token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoiIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiIiwiZXhwIjoxNTU3MzE1MjY3LCJpc3MiOiJmcm9udC13ZWIiLCJhdWQiOiJiYWNrLWFwaSJ9.jjc3DOul_Ob-X8X7XUOuWhYz2qVuWWzlabjR1o6gSck'
       console.log('ask for login')
-      this.connection.invoke('Authentificate', token)                                                                                                                                             ;   
+      this.connection.invoke('Authentificate', token)
     },
     sendReport () {
       let packet = {
-          Header: {
-            Item1: 0,
-            Item2: 0,
-            Item3: 0
-          },
-          Content: this.toReport,
-          DateTime: new Date()
+        header: {
+          Item1: 0,
+          Item2: 0,
+          Item3: 0
+        },
+        content: this.toReport,
+        dateTime: new Date()
       }
 
       // Send to Hub
-      this.connection.invoke('ClientToAll', packet);
+      this.connection.invoke('ClientToAll', packet)
+      console.log('sent:', packet)
+      this.reports.push(`ME : ${packet.content}`)
 
       this.toReport = ''
     },
-    OnClientRequest (packet) {
-      console.log(packet)
-
-      switch (packet.header.item1) {
-        case 0: // State Change
-          switch (packet.header.item2) {
-            case 0: // Server
-              this.reports.push(packet.content)
-              break
-            case 1: // Client
-              this.reports.push(packet.content)
-              break
-          }
-          break
-      }
+    onServerRequest (packet) {
+      console.log('server request: ', packet)
+      this.reports.push(packet.content)
+    },
+    onClientRequest (sender, packet) {
+      console.log('client request:', sender, packet)
+      this.reports.push(`${sender} : ${packet.content}`)
     }
   },
   mounted () {
@@ -100,7 +102,4 @@ export default {
 </script>
 
 <style lang="stylus" scoped>
-
 </style>
-
-

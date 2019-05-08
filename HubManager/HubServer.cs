@@ -29,7 +29,7 @@ namespace HubManager
 
         public override async Task OnConnectedAsync()
         {
-            await Groups.AddToGroupAsync(Context.ConnectionId, "SignalR Users");
+            // await Groups.AddToGroupAsync(Context.ConnectionId, "SignalR Users");
             await base.OnConnectedAsync();
 
             var guestId = Context.ConnectionId;
@@ -119,6 +119,36 @@ namespace HubManager
             return clientsManager.Users().Any(x => x.Id == clientId);
         }
 
+        public async Task LoginGroup(string groupName)
+        {
+            var clientId = Context.ConnectionId;
+            if (!AuthorizedUser(clientId))
+            {
+                await DisconnectClient(clientId);
+                return;
+            }
+
+            var user = clientsManager.Users().FirstOrDefault(x => x.Id == clientId);
+            user.Groups.Add(groupName);
+            await Groups.AddToGroupAsync(clientId, groupName);
+            await ServerToGroup(new Packet(new Tuple<int, int, int>(0, 0, 0), $"{DateTime.Now.ToString("D")} : User {clientId} has joined the group {groupName}."), groupName);
+        }
+
+        public async Task LogoutGroup(string groupName)
+        {
+            var clientId = Context.ConnectionId;
+            if (!AuthorizedUser(clientId))
+            {
+                await DisconnectClient(clientId);
+                return;
+            }
+
+            await Groups.RemoveFromGroupAsync(clientId, groupName);
+            await ServerToGroup(new Packet(new Tuple<int, int, int>(0, 0, 0), $"{DateTime.Now.ToString("D")} : User {clientId} has left the group {groupName}."), groupName);
+            var user = clientsManager.Users().FirstOrDefault(x => x.Id == clientId);
+            user.Groups.Remove(groupName);
+        }
+
         public async Task ClientToServer(Packet request)
         {
             //await Clients.Client(clientId).SendAsync("OnServerRequest", request);
@@ -142,6 +172,12 @@ namespace HubManager
             OnSent("server", "all", request);
         }
 
+        public async Task ServerToGroup(Packet request, string groupName, bool includeGuests = false)
+        {
+            await Clients.Group(groupName).SendAsync("OnServerRequest", request);
+            OnSent("server", "group", request);
+        }
+
         public async Task ServerToClient(string clientId, Packet request)
         {
             await Clients.Client(clientId).SendAsync("OnServerRequest", request);
@@ -162,6 +198,19 @@ namespace HubManager
             var usersIds = clientsManager.Users().Where(x => !x.Id.Equals(senderId)).Select(x => x.Id).ToList();
             await Clients.Clients(usersIds).SendAsync("OnClientRequest", senderId, request);
             OnSent(senderId, "all", request);
+        }
+
+        public async Task ClientToGroup(Packet request, string groupName)
+        {
+            var senderId = Context.ConnectionId;
+            if (!AuthorizedUser(senderId))
+            {
+                await DisconnectClient(senderId);
+                return;
+            }
+
+            await Clients.Group(groupName).SendAsync("OnClientRequest", senderId, request);
+            OnSent(senderId, "group", request);
         }
 
         public async Task ClientToClient(string clientId, Packet request)

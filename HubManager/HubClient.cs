@@ -74,7 +74,7 @@ namespace HubManager
 
             hub.On("Login", () =>
             {
-                OnLog("Authentificate");
+                OnLog($"Authentificate: {Token}");
                 hub.SendAsync("Authentificate", Token);
             });
 
@@ -89,6 +89,16 @@ namespace HubManager
             });
         }
 
+        public async Task LoginGroup(string groupName)
+        {
+            await hub.SendAsync("LoginGroup", groupName);
+        }
+
+        public async Task LogoutGroup(string groupName)
+        {
+            await hub.SendAsync("LogoutGroup", groupName);
+        }
+
         public async Task SendToServerAsync(Packet request)
         {
             await hub.SendAsync("ClientToServer", request);
@@ -99,6 +109,12 @@ namespace HubManager
         {
             await hub.SendAsync("ClientToAll", request);
             OnSent("all", request);
+        }
+
+        public async Task SendToGroupAsync(Packet request, string groupName)
+        {
+            await hub.SendAsync("ClientToGroup", request, groupName);
+            OnSent("group", request);
         }
 
         public async Task SendToClientAsync(string clientId, Packet request)

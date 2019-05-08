@@ -1,32 +1,14 @@
 <template>
-  <div id="app">
-    <SignalX></SignalX>
-
-    <img alt="Vue logo" src="./assets/logo.png">
-    <HelloWorld msg="Welcome to Your Vue.js App"/>
+  <div id="q-app">
+    <router-view />
   </div>
 </template>
 
 <script>
-import HelloWorld from './components/HelloWorld.vue'
-import SignalX from './components/SignalX.vue'
-
 export default {
-  name: 'app',
-  components: {
-    HelloWorld,
-    SignalX
-  }
+  name: 'App'
 }
 </script>
 
 <style>
-#app {
-  font-family: 'Avenir', Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  margin-top: 60px;
-}
 </style>
